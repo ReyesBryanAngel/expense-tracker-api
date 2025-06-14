@@ -2,8 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/database');
-const adminRoutes = require('./routes/adminRoutes');
-// const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+// const googleAuthRoutes = require('./routes/googleAuthRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 
 dotenv.config();
@@ -15,8 +15,8 @@ app.use(cors());
 
 // app.use(passport.initialize());
 // app.use(passport.session());
-// app.use(authRoutes)
-app.use('/api/users', adminRoutes);
+// app.use(googleAuthRoutes)
+app.use('/api/users', userRoutes);
 app.use(errorHandler);
 
 module.exports = app;

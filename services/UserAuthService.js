@@ -23,9 +23,9 @@ const getAdminByToken = async(token) => {
     return await User.findOne(token);
 }
 
-const getAdminById = async(_id) => {
-    return await User.findOne(_id);
-}
+const getAdminById = async (id) => {
+    return await User.findById(id);
+};
 
 module.exports = {
     createAdmin,
