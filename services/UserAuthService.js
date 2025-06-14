@@ -1,15 +1,15 @@
-const User = require('../models/User');
+const User = require("../models/User");
 
-const createAdmin = async (data) => {
-    const user = new User(data);
-    user.generateVerificationToken();
+const createUser = async (data) => {
+  const user = new User(data);
+  user.generateVerificationToken();
 
-    return await user.save();
-}
+  return await user.save();
+};
 
-const findAdmin = async (username) => {
-    return await User.findOne({ email: username });
-}
+const findUser = async (email) => {
+  return await User.findOne({ email: email });
+};
 
 // const updateUser = async (id, data) => {
 //     return await User.findByIdAndUpdate(id, data, { new: true });
@@ -19,19 +19,19 @@ const findAdmin = async (username) => {
 //     return await User.findByIdAndDelete(id);
 // }
 
-const getAdminByToken = async(token) => {
-    return await User.findOne(token);
-}
+const getAdminByToken = async (token) => {
+  return await User.findOne(token);
+};
 
 const getAdminById = async (id) => {
-    return await User.findById(id);
+  return await User.findById(id);
 };
 
 module.exports = {
-    createAdmin,
-    // updateUser,
-    // deleteUser,
-    getAdminByToken,
-    findAdmin,
-    getAdminById
-}
+  createUser,
+  // updateUser,
+  // deleteUser,
+  getAdminByToken,
+  findUser,
+  getAdminById,
+};
