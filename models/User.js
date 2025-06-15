@@ -19,7 +19,9 @@ const userSchema = new mongoose.Schema({
     age: { type: Number, required: true },
     phoneNumber: { type: String, required: true, unique: true},
     isVerified: { type: Boolean, default: false },
-    verificationToken: { type: String }
+    verificationToken: { type: String },
+    refreshToken: { type: String },
+    tokenVersion: { type: Number, default: 0 },
 });
 
 userSchema.methods.generateVerificationToken = function() {

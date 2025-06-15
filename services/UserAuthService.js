@@ -11,9 +11,9 @@ const findUser = async (email) => {
   return await User.findOne({ email: email });
 };
 
-// const updateUser = async (id, data) => {
-//     return await User.findByIdAndUpdate(id, data, { new: true });
-// }
+const updateUser = async (id, data) => {
+    return await User.findByIdAndUpdate(id, data, { new: true });
+}
 
 // const deleteUser = async(id) => {
 //     return await User.findByIdAndDelete(id);
@@ -29,7 +29,7 @@ const getAdminById = async (id) => {
 
 module.exports = {
   createUser,
-  // updateUser,
+  updateUser,
   // deleteUser,
   getAdminByToken,
   findUser,

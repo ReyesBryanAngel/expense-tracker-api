@@ -1,7 +1,9 @@
 const UserAuthService = require("../../services/UserAuthService");
 const transporter = require("../../config/nodemailer");
 const jwt = require("jsonwebtoken");
+const User = require("../../models/User");
 const bcrypt = require("bcrypt");
+const { generateAccessToken, generateRefreshToken } = require("../../utils/token");
 
 const createUser = async (req, res, next) => {
   try {
@@ -13,7 +15,7 @@ const createUser = async (req, res, next) => {
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: user.email,
-      subject: "Email verification for FinanceTracker",
+      subject: "Email verification for FinanceTracker App",
       text: `Click this link to verify your account: ${verificationUrl}`,
     };
 
@@ -65,7 +67,6 @@ const login = async (req, res, next) => {
   //   console.log("req:", req);
   try {
     const user = await UserAuthService.findUser(email);
-    console.log("user:", user);
     if (!user)
       return res.status(404).json({
         code: 404,
@@ -81,23 +82,61 @@ const login = async (req, res, next) => {
         message: "Invalid credentials.",
       });
 
-    const token = jwt.sign(
-      { id: user._id, username: username, role: "ADMIN" },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    user.refreshToken = refreshToken;
+    await user.save();
 
     return res.status(200).json({
       code: 200,
       status: "success",
       message: "Login Successfully.",
-      token: token,
+      accessToken: accessToken,
+      refreshToken: refreshToken
     });
   } catch (error) {
     next(error);
     res.status(500).json({ message: "Login failed.", error });
   }
 };
+
+const refreshToken = async (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) return res.sendStatus(401);
+
+  try {
+    // Decode first
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET_REFRESH);
+    const user = await User.findById(decoded.id);
+    if (!user || user.refreshToken !== refreshToken) return res.sendStatus(403);
+
+    // Invalidate old access tokens
+    user.tokenVersion += 1;
+    await user.save();
+
+    const newAccessToken = generateAccessToken(user);
+    const newRefreshToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET_REFRESH,
+      { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }
+    );
+
+    user.refreshToken = newRefreshToken;
+    await user.save();
+
+    return res.json({
+      code: 200,
+      status: "success",
+      message: "Refresh token successfully.",
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    });
+  } catch (err) {
+    return res.status(403).json({ message: "Invalid refresh token" });
+  }
+};
+
 
 // controller
 const getProfile = async (req, res) => {
@@ -125,25 +164,33 @@ const getProfile = async (req, res) => {
     return res.status(200).json({
       code: 200,
       status: "success",
-      message: "Successfully fetched Admin User info.",
+      message: "Successfully fetched User info.",
       data: user,
     });
   } catch (error) {
-    console.error("Error fetching admin:", error);
-    res.status(500).json({ message: "Get Admin Failed.", error });
+    console.error("Error fetching user info:", error);
+    res.status(500).json({ message: "Get User Failed.", error });
   }
 };
 
-// const updateUser = async (req, res, next) => {
-//     try {
-//         const user = await UserAuthService.updateUser(req.params.id, req.body);
-//         if (!user) return res.status(404).json({ message: 'User is not found.' });
+const updateProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const user = await UserAuthService.updateUser(userId, req.body);
+    if (!user) return res.status(404).json({ message: 'User is not found.' });
 
-//         res.status(200).json(user);
-//     } catch (error) {
-//         next(error);
-//     }
-// }
+    // res.status(200).json(user);
+
+    return res.status(200).json({
+      code: 200,
+      status: "success",
+      message: "Successfully updated User info.",
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 
 // const deleteUser = async (req, res, next) => {
 //     try {
@@ -157,9 +204,10 @@ const getProfile = async (req, res) => {
 
 module.exports = {
   createUser,
-  // updateUser,
+  updateProfile,
   // deleteUser,
   verifyToken,
   login,
+  refreshToken,
   getProfile,
 };
