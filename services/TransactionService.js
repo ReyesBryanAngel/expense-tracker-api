@@ -12,6 +12,10 @@ const getTransactionsByUser = async (userId) => {
     return await Transaction.find({ userId: userId });
 }
 
+const getTransactionById = async (id) => {
+    return await Transaction.findById(id);
+}
+
 const deleteTransaction = async (id) => {
     return await Transaction.findByIdAndDelete(id);
 }
@@ -20,5 +24,6 @@ module.exports = {
     createTransaction,
     updateTransaction,
     getTransactionsByUser,
+    getTransactionById,
     deleteTransaction
 }

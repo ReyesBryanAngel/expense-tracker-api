@@ -1,6 +1,6 @@
 const User = require("../models/User");
 
-const createUser = async (data) => {
+const register = async (data) => {
   const user = new User(data);
   user.generateVerificationToken();
 
@@ -28,7 +28,7 @@ const getAdminById = async (id) => {
 };
 
 module.exports = {
-  createUser,
+  register,
   updateUser,
   // deleteUser,
   getAdminByToken,

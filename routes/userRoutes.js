@@ -5,7 +5,7 @@ const router = express.Router();
 const authenticateToken = require("../middlewares/authMidllewre");
 
 //Auth Routes
-router.post("/createUser", UserAuthController.createUser);
+router.post("/register", UserAuthController.register);
 router.get("/verify/:token", UserAuthController.verifyToken);
 router.post("/login", UserAuthController.login);
 router.get("/profile", authenticateToken, UserAuthController.getProfile);
@@ -17,7 +17,8 @@ router.post("/refresh-token", UserAuthController.refreshToken);
 //Transaction Routes
 router.post("/transaction", authenticateToken, TransactionController.createTransaction);
 router.put("/transaction/:id", authenticateToken, TransactionController.updateTransaction);
-router.get("/transaction", authenticateToken, TransactionController.getTransactions);
+router.get("/transactions", authenticateToken, TransactionController.getTransactions);
+router.get("/transaction/:id", authenticateToken, TransactionController.getTransaction);
 router.delete("/transaction/:id", authenticateToken, TransactionController.deleteTransaction);
 
 module.exports = router;

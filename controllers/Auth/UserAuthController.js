@@ -5,18 +5,24 @@ const User = require("../../models/User");
 const bcrypt = require("bcrypt");
 const { generateAccessToken, generateRefreshToken } = require("../../utils/token");
 
-const createUser = async (req, res, next) => {
+const register = async (req, res, next) => {
   try {
-    const user = await UserAuthService.createUser({
+    const user = await UserAuthService.register({
       ...req.body,
       password: await bcrypt.hash(req.body.password, 10),
     });
+
     const verificationUrl = `${process.env.BASE_URL}/api/users/verify/${user.verificationToken}`;
+
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: "Email verification for FinanceTracker App",
-      text: `Click this link to verify your account: ${verificationUrl}`,
+      to: user?.email,
+      subject: "Welcome to FinanceTracker",
+      template: "verify",
+      context: {
+        firstName: user?.firstName || "User",
+        verificationUrl,
+      },
     };
 
     await transporter.sendMail(mailOptions);
@@ -52,11 +58,7 @@ const verifyToken = async (req, res) => {
     user.verificationToken = undefined;
     await user.save();
 
-    return res.status(200).json({
-      code: 200,
-      status: "success",
-      message: "Account verified successfully",
-    });
+    return res.redirect("http://localhost:5173");
   } catch (error) {
     res.status(500).json({ message: "Verification failed.", error });
   }
@@ -64,7 +66,6 @@ const verifyToken = async (req, res) => {
 
 const login = async (req, res, next) => {
   const { email, password } = req.body;
-  //   console.log("req:", req);
   try {
     const user = await UserAuthService.findUser(email);
     if (!user)
@@ -137,7 +138,6 @@ const refreshToken = async (req, res) => {
   }
 };
 
-
 // controller
 const getProfile = async (req, res) => {
   try {
@@ -203,7 +203,7 @@ const updateProfile = async (req, res, next) => {
 // }
 
 module.exports = {
-  createUser,
+  register,
   updateProfile,
   // deleteUser,
   verifyToken,
