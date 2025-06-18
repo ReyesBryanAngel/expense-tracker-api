@@ -3,6 +3,8 @@ const transporter = require("../../config/nodemailer");
 const jwt = require("jsonwebtoken");
 const User = require("../../models/User");
 const bcrypt = require("bcrypt");
+const path = require("path");
+const fs = require("fs");
 const { generateAccessToken, generateRefreshToken } = require("../../utils/token");
 
 const register = async (req, res, next) => {
@@ -17,7 +19,7 @@ const register = async (req, res, next) => {
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: user?.email,
-      subject: "Welcome to FinanceTracker",
+      subject: "Welcome to Fintrack!",
       template: "verify",
       context: {
         firstName: user?.firstName || "User",
@@ -30,7 +32,7 @@ const register = async (req, res, next) => {
     return res.status(201).json({
       code: 201,
       status: "success",
-      message: "Your admin account has been created.",
+      message: "Your account has been created.",
       data: user,
     });
   } catch (error) {
@@ -64,6 +66,80 @@ const verifyToken = async (req, res) => {
   }
 };
 
+const uploadPhoto = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    await User.findByIdAndUpdate(
+      userId,
+      { photo: req.file.path },
+      { new: true }
+    );
+
+    res.json({
+      code: 200,
+      status: "success",
+      message: "Photo successfully uploaded!."
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+const getPhoto = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+    if (!user || !user.photo) {
+      return res.status(404).json({ message: "Photo not found" });
+    }
+
+    const photoPath = path.resolve(user.photo);
+    if (!fs.existsSync(photoPath)) {
+      return res.status(404).json({ message: "Photo file does not exist" });
+    }
+
+    res.sendFile(photoPath);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deletePhoto = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    if (!user || !user.photo) {
+      return res.status(404).json({ message: "No photo to delete" });
+    }
+    const photoPath = path.resolve(user.photo);
+
+    if (!photoPath.startsWith(path.resolve("uploads"))) {
+      return res.status(403).json({ message: "Invalid photo path" });
+    }
+
+    if (fs.existsSync(photoPath)) {
+      fs.unlinkSync(photoPath); // Delete the file
+    }
+
+    // Remove the photo field in DB
+    user.photo = undefined;
+    await user.save();
+
+    res.json({
+      code: 200,
+      status: "success",
+      message: "Photo successfully deleted.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const login = async (req, res, next) => {
   const { email, password } = req.body;
   try {
@@ -83,7 +159,7 @@ const login = async (req, res, next) => {
         message: "Invalid credentials.",
       });
 
-    const accessToken = generateAccessToken(user);
+    const accessToken = generateAccessToken(user, 'authenticate');
     const refreshToken = generateRefreshToken(user);
 
     user.refreshToken = refreshToken;
@@ -107,21 +183,15 @@ const refreshToken = async (req, res) => {
   if (!refreshToken) return res.sendStatus(401);
 
   try {
-    // Decode first
     const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET_REFRESH);
     const user = await User.findById(decoded.id);
     if (!user || user.refreshToken !== refreshToken) return res.sendStatus(403);
 
-    // Invalidate old access tokens
     user.tokenVersion += 1;
     await user.save();
 
-    const newAccessToken = generateAccessToken(user);
-    const newRefreshToken = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET_REFRESH,
-      { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }
-    );
+    const newAccessToken = generateAccessToken(user, 'authenticate');
+    const newRefreshToken = generateRefreshToken(user);
 
     user.refreshToken = newRefreshToken;
     await user.save();
@@ -138,7 +208,6 @@ const refreshToken = async (req, res) => {
   }
 };
 
-// controller
 const getProfile = async (req, res) => {
   try {
     const { id } = req.user;
@@ -179,8 +248,6 @@ const updateProfile = async (req, res, next) => {
     const user = await UserAuthService.updateUser(userId, req.body);
     if (!user) return res.status(404).json({ message: 'User is not found.' });
 
-    // res.status(200).json(user);
-
     return res.status(200).json({
       code: 200,
       status: "success",
@@ -192,22 +259,141 @@ const updateProfile = async (req, res, next) => {
   }
 }
 
-// const deleteUser = async (req, res, next) => {
-//     try {
-//         const user = await UserAuthService.deleteUser(req.params.id);
-//         if (!user) return res.status(404).json({ message: 'User is not found.' });
-//         res.status(200).json({ message: 'User deleted' });
-//     } catch (error) {
-//         next(error);
-//     }
-// }
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await UserAuthService.findUser(email);
+
+    if (!user)
+      return res.status(404).json({
+        code: 404,
+        status: "failed",
+        message: "User not found.",
+      });
+
+    const newAccessToken = generateAccessToken(user, 'resetPass');
+    const resetUrl = `${process.env.BASE_URL}/api/users/reset-password/${newAccessToken}`;
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: user?.email,
+      subject: "Password Reset",
+      template: "resetPass",
+      context: {
+        firstName: user?.firstName || "User",
+        resetUrl,
+      },
+    };
+
+    await transporter.sendMail(mailOptions);
+    return res.status(200).json({
+      code: 200,
+      status: "success",
+      message: "Password reset link sent to your email.",
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+const resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Fetch user based on decoded token payload
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(404).json({
+        code: 404,
+        status: "failed",
+        message: "User not found.",
+      });
+    }
+
+    // Token is valid and user exists
+    return res.redirect(`http://localhost:5173/reset-password/${token}`);
+
+  } catch (error) {
+    return res.status(401).json({
+      code: 401,
+      status: "failed",
+      message: "Invalid or expired reset token.",
+    });
+  }
+};
+
+const changePassword = async (req, res) => {
+  try {
+    const { newPassword, token } = req.body;
+
+    if (!newPassword || !token) {
+      return res.status(400).json({
+        code: 400,
+        status: "failed",
+        message: "Password and token are required.",
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user || user.resetTokenVersion !== decoded.resetTokenVersion) {
+      return res.status(404).json({
+        code: 404,
+        status: "failed",
+        message: "Invalid or expired token.",
+      });
+    }
+
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&_*])(?=.*\d).{8,}$/;
+
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        code: 400,
+        status: "failed",
+        message:
+          "Password must be at least 8 characters and include one uppercase letter, one number, and one special character.",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    user.password = hashedPassword;
+    user.resetTokenVersion += 1;
+    await user.save();
+
+    return res.status(200).json({
+      code: 200,
+      status: "success",
+      message: "Password has been changed successfully.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      code: 500,
+      status: "error",
+      message: "An error occurred while changing the password.",
+      error,
+    });
+  }
+};
+
+
 
 module.exports = {
   register,
+  uploadPhoto,
+  getPhoto,
   updateProfile,
-  // deleteUser,
   verifyToken,
   login,
   refreshToken,
   getProfile,
+  forgotPassword,
+  resetPassword,
+  changePassword,
+  deletePhoto
 };

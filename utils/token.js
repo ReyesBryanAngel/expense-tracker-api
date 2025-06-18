@@ -1,22 +1,31 @@
-const jwt =  require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 
-exports.generateAccessToken = (user) => {
+exports.generateAccessToken = (user, purpose) => {
     return jwt.sign(
-        { 
-            id: user._id, 
+        {
+            id: user._id,
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            tokenVersion: user.tokenVersion 
+            tokenVersion: user.tokenVersion,
+            age: user.age,
+            phoneNumber: user.phoneNumber,
+            isVerified: user.isVerified
         },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
+        { expiresIn: purpose === 'authenticate' ? process.env.ACCESS_TOKEN_EXPIRY : process.env.RESET_PASSWORD_TOKEN }
     )
 }
 
 exports.generateRefreshToken = (user) => {
     return jwt.sign(
-        {  id: user._id, email: user.email },
+        {
+            id: user._id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            tokenVersion: user.tokenVersion
+        },
         process.env.JWT_SECRET_REFRESH,
         { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }
     )

@@ -2,29 +2,31 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 const userSchema = new mongoose.Schema({
-    firstName: { type: String, required: true},
-    lastName: { type: String, required: true},
-    email: { type: String, required: true, unique: true},
-    password: { 
-        type: String, 
+    photo: { type: String, required: false },
+    firstName: { type: String, required: true },
+    lastName: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: {
+        type: String,
         required: true,
         minlength: 8,
         validate: {
-            validator: function(v) {
+            validator: function (v) {
                 return /^(?=.*[A-Z])(?=.*[!@#$%^&_*])(?=.*\d).{8,}$/.test(v);
             },
             message: props => `${props.value} is not a valid password. It must contain at least 8 characters, one uppercase letter, one special character, and one number.`
         }
     },
     age: { type: Number, required: true },
-    phoneNumber: { type: String, required: true, unique: true},
+    phoneNumber: { type: String, required: true, unique: true },
     isVerified: { type: Boolean, default: false },
     verificationToken: { type: String },
     refreshToken: { type: String },
     tokenVersion: { type: Number, default: 0 },
+    resetTokenVersion: { type: Number, default: 0 },
 });
 
-userSchema.methods.generateVerificationToken = function() {
+userSchema.methods.generateVerificationToken = function () {
     this.verificationToken = crypto.randomBytes(20).toString('hex');
 };
 

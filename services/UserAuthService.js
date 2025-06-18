@@ -2,6 +2,7 @@ const User = require("../models/User");
 
 const register = async (data) => {
   const user = new User(data);
+  await user.validate();
   user.generateVerificationToken();
 
   return await user.save();
