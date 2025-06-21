@@ -10,7 +10,8 @@ exports.generateAccessToken = (user, purpose) => {
             tokenVersion: user.tokenVersion,
             age: user.age,
             phoneNumber: user.phoneNumber,
-            isVerified: user.isVerified
+            isVerified: user.isVerified,
+            resetTokenVersion: user.resetTokenVersion
         },
         process.env.JWT_SECRET,
         { expiresIn: purpose === 'authenticate' ? process.env.ACCESS_TOKEN_EXPIRY : process.env.RESET_PASSWORD_TOKEN }

@@ -2,10 +2,27 @@ const UserAuthService = require("../../services/UserAuthService");
 const transporter = require("../../config/nodemailer");
 const jwt = require("jsonwebtoken");
 const User = require("../../models/User");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const path = require("path");
 const fs = require("fs");
 const { generateAccessToken, generateRefreshToken } = require("../../utils/token");
+
+const sendVerificationEmail = async (user) => {
+  const verificationUrl = `${process.env.BASE_URL}/api/users/verify/${user.verificationToken}`;
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: user?.email,
+    subject: "Welcome to Fintrack!",
+    template: "verify",
+    context: {
+      firstName: user?.firstName || "User",
+      verificationUrl,
+    },
+  };
+
+  await transporter.sendMail(mailOptions);
+}
 
 const register = async (req, res, next) => {
   try {
@@ -14,32 +31,52 @@ const register = async (req, res, next) => {
       password: await bcrypt.hash(req.body.password, 10),
     });
 
-    const verificationUrl = `${process.env.BASE_URL}/api/users/verify/${user.verificationToken}`;
-
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: user?.email,
-      subject: "Welcome to Fintrack!",
-      template: "verify",
-      context: {
-        firstName: user?.firstName || "User",
-        verificationUrl,
-      },
-    };
-
-    await transporter.sendMail(mailOptions);
+    await sendVerificationEmail(user);
 
     return res.status(201).json({
       code: 201,
       status: "success",
-      message: "Your account has been created.",
+      message: "Your account has been created. Please check your email for verification.",
       data: user,
     });
+
   } catch (error) {
+    if (error.code === 11000 && error.keyPattern?.email) {
+      const existingUser = await User.findOne({ email: req.body.email });
+
+      if (existingUser && !existingUser.isVerified) {
+        existingUser.firstName = req.body.firstName;
+        existingUser.lastName = req.body.lastName;
+        existingUser.age = req.body.age;
+        existingUser.phoneNumber = req.body.phoneNumber;
+
+        if (req.body.password) {
+          existingUser.password = await bcrypt.hash(req.body.password, 10);
+        }
+
+        existingUser.generateVerificationToken();
+        await existingUser.save();
+
+        await sendVerificationEmail(existingUser);
+
+        return res.status(200).json({
+          message: "Verification email resent. Please check your inbox.",
+          status: "pending_verification",
+          code: 200,
+        });
+      }
+
+      return res.status(400).json({
+        message: "Email already exists.",
+        status: "failed",
+        code: 400,
+      });
+    }
+
     next(error);
-    res.status(500).json({ message: "Registration failed", error });
   }
 };
+
 
 const verifyToken = async (req, res) => {
   try {
@@ -56,15 +93,18 @@ const verifyToken = async (req, res) => {
       });
     }
 
+    const redirectToken = user.verificationToken; // save it before clearing
+
     user.isVerified = true;
     user.verificationToken = undefined;
     await user.save();
 
-    return res.redirect("http://localhost:5173");
+    return res.redirect(`${process.env.APP_URL_DEV}/account-verified/${redirectToken}`);
   } catch (error) {
     res.status(500).json({ message: "Verification failed.", error });
   }
 };
+
 
 const uploadPhoto = async (req, res, next) => {
   try {
@@ -149,6 +189,13 @@ const login = async (req, res, next) => {
         code: 404,
         status: "failed",
         message: "User not found.",
+      });
+
+    if (!user.isVerified)
+      return res.status(401).json({
+        code: 401,
+        status: "failed",
+        message: "Please verify your account or register again.",
       });
 
     const isPasswordMatch = await bcrypt.compare(password, user.password);
