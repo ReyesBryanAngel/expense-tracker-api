@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/database');
-const userRoutes = require('./routes/userRoutes');
+const apiRoutes = require('./routes/apiRoutes');
 // const googleAuthRoutes = require('./routes/googleAuthRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 
@@ -16,7 +16,7 @@ app.use(cors());
 // app.use(passport.initialize());
 // app.use(passport.session());
 // app.use(googleAuthRoutes)
-app.use('/api/users', userRoutes);
+app.use('/api/users', apiRoutes);
 app.use(errorHandler);
 
 module.exports = app;
