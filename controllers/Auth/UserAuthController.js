@@ -81,7 +81,7 @@ const register = async (req, res, next) => {
 const verifyToken = async (req, res) => {
   try {
     const { token } = req.params;
-    const user = await UserAuthService.getAdminByToken({
+    const user = await UserAuthService.getUserByToken({
       verificationToken: token,
     });
 
@@ -267,7 +267,7 @@ const getProfile = async (req, res) => {
       });
     }
 
-    const user = await UserAuthService.getAdminById(id);
+    const user = await UserAuthService.getUserById(id);
 
     if (!user) {
       return res.status(404).json({

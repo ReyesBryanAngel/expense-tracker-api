@@ -1,6 +1,7 @@
 const express = require("express");
 const UserAuthController = require("../controllers/Auth/UserAuthController");
-const TransactionController = require("../controllers/TransactionController")
+const TransactionController = require("../controllers/TransactionController");
+const BillingsController = require("../controllers/BillingsController");
 const router = express.Router();
 const authenticateToken = require("../middlewares/authMidllewre");
 const upload = require("../utils/upload")
@@ -39,5 +40,13 @@ router.put("/transaction/:id", authenticateToken, TransactionController.updateTr
 router.get("/transactions", authenticateToken, TransactionController.getTransactions);
 router.get("/transaction/:id", authenticateToken, TransactionController.getTransaction);
 router.delete("/transaction/:id", authenticateToken, TransactionController.deleteTransaction);
+
+//Billing Routes
+router.post("/billing", authenticateToken, BillingsController.createBilling);
+router.put("/billing/:id", authenticateToken, BillingsController.updateBilling);
+router.get("/billings", authenticateToken, BillingsController.getBillings);
+router.get("/billing/:id", authenticateToken, BillingsController.getBilling);
+router.delete("/billing/:id", authenticateToken, BillingsController.deleteBilling);
+router.post("/remind-billing", authenticateToken, BillingsController.RemindBilling);
 
 module.exports = router;

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>FinTrack</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        color: #333;
+        background-color: #f7f7f7;
+        padding: 20px;
+      }
+      .container {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 8px;
+      }
+      h2 {
+        color: #1976d2;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      th, td {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+        text-align: left;
+      }
+      .footer {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #777;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Hi {{firstName}},</h2>
+      <p>This is a reminder that you have upcoming bills due. Please make sure to pay them on time to avoid any late fees.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Bill Name</th>
+            <th>Amount</th>
+            <th>Due Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each billings}}
+            <tr>
+              <td>{{this.name}}</td>
+              <td>{{this.amount}}</td>
+              <td>{{this.dueDate}}</td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+
+      <p>If you’ve already paid these bills, please ignore this message.</p>
+
+      <div class="footer">
+        <p>Thank you,<br/>Your Finance Tracker Team</p>
+      </div>
+    </div>
+  </body>
+</html>

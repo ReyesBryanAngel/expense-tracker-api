@@ -16,23 +16,18 @@ const updateUser = async (id, data) => {
     return await User.findByIdAndUpdate(id, data, { new: true });
 }
 
-// const deleteUser = async(id) => {
-//     return await User.findByIdAndDelete(id);
-// }
-
-const getAdminByToken = async (token) => {
+const getUserByToken = async (token) => {
   return await User.findOne(token);
 };
 
-const getAdminById = async (id) => {
+const getUserById = async (id) => {
   return await User.findById(id);
 };
 
 module.exports = {
   register,
   updateUser,
-  // deleteUser,
-  getAdminByToken,
+  getUserByToken,
   findUser,
-  getAdminById,
+  getUserById,
 };
