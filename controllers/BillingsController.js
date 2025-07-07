@@ -1,6 +1,6 @@
 const BillingsService = require('../services/BillingsService');
 const UserAuthService = require('../services/UserAuthService');
-const dayjs = require('dayjs');
+const dayjs = require('../utils/setupDays').default;
 
 const createBilling = async (req, res, next) => {
     try {

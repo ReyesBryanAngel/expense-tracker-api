@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const dayjs = require('dayjs');
+const dayjs = require('../utils/setupDays').default;
 const BillingsService = require('../services/BillingsService');
 const UserAuthService = require('../services/UserAuthService');
 const Billings = require('../models/Billings');
@@ -109,7 +109,7 @@ cron.schedule('0 6 1 * *', () => resetRecurringBillings('Monthly')); // 1st of e
 cron.schedule('0 6 1 1 *', () => resetRecurringBillings('Yearly')); // Jan 1st at 6 AM
 
 // Run reminder job every 10 minutes
-cron.schedule('*/10 * * * *', () => {
+cron.schedule('* * * * *', () => {
     console.log('Running billing reminder job...');
     frequencyBasedBillingReminder();
 });
