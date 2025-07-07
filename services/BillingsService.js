@@ -6,7 +6,7 @@ const createBilling = async (data) => {
 }
 
 const updateBilling = async (id, data) => {
-    await BillingsService.findByIdAndUpdate(id, data, {new: true})
+    return await BillingsService.findByIdAndUpdate(id, data, {new: true})
 }
 
 const getBillingByUser = async (userId) => {
@@ -27,7 +27,8 @@ const getAllBillingsDueOn = async (date) => {
       $gte: new Date(date + "T00:00:00Z"),
       $lte: new Date(date + "T23:59:59Z")
     },
-    isReminded: false
+    isReminded: false,
+    // isPaid: false
   });
 };
 
@@ -39,7 +40,7 @@ const sendBillingReminder = async (billings, user) => {
         template: "billing-reminder",
         context: {
             firstName: user?.firstName || "Fintrack User",
-            billings: billings
+            billings,
         },
     };
 

@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
 
 exports.generateAccessToken = (user, purpose) => {
-    return jwt.sign(
+    if (purpose) {
+        return jwt.sign(
         {
             id: user._id,
             email: user.email,
@@ -16,6 +17,7 @@ exports.generateAccessToken = (user, purpose) => {
         process.env.JWT_SECRET,
         { expiresIn: purpose === 'authenticate' ? process.env.ACCESS_TOKEN_EXPIRY : process.env.RESET_PASSWORD_TOKEN }
     )
+    }
 }
 
 exports.generateRefreshToken = (user) => {

@@ -4,8 +4,12 @@ const dayjs = require('dayjs');
 
 const createBilling = async (req, res, next) => {
     try {
-        const data = { ...req.body, user: req.user.id };
-        await BillingsService.createBilling({ ...data, userId: req.user.id });
+          const data = {
+            ...req.body,
+            userId: req.user.id,
+            date: dayjs().toDate()
+        };
+        await BillingsService.createBilling(data);
         return res.status(201).json({
             message: 'Billings Successfully Added.',
             code: 201,

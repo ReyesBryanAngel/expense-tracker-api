@@ -2,43 +2,68 @@ const cron = require('node-cron');
 const dayjs = require('dayjs');
 const BillingsService = require('../services/BillingsService');
 const UserAuthService = require('../services/UserAuthService');
-const transporter = require('../config/nodemailer');
+const Billings = require('../models/Billings');
 
-const runBillingReminderJob = async () => {
+const isReminderDue = (billing) => {
+    const now = dayjs();
+    const due = dayjs(billing.dueDate);
+
+    switch (billing.frequency) {
+        case "Daily":
+            return due.diff(now, "hour") <= 3 && due.isAfter(now);
+        case "Weekly":
+            return due.diff(now, "day") <= 1 && due.isAfter(now);
+        case "Monthly":
+            return due.diff(now, "day") <= 3 && due.isAfter(now);
+        case "Yearly":
+            return due.diff(now, "month") <= 1 && due.isAfter(now);
+        default:
+            return false;
+    }
+};
+
+const frequencyBasedBillingReminder = async () => {
     try {
-        const targetDate = dayjs().add(3, 'day').format('YYYY-MM-DD');
-        const billings = await BillingsService.getAllBillingsDueOn(targetDate);
+        const allBillings = await Billings.find({
+            isReminded: false,
+            isPaid: false,
+        });
+
+        const upcomingBillings = allBillings.filter(isReminderDue);
         const userMap = new Map();
 
-        for (const billing of billings) {
+        for (const billing of upcomingBillings) {
             if (!userMap.has(billing.userId)) userMap.set(billing.userId, []);
             userMap.get(billing.userId).push(billing);
         }
 
-        // 2. Send reminders per user
-        for (const [userId, userBillings] of userMap.entries()) {
+        for (const [userId, billings] of userMap.entries()) {
             const user = await UserAuthService.getUserById(userId);
             if (user) {
-                const plainedBillings = await userBillings?.map(billing => {
-                    const obj = billing.toObject ? billing.toObject() : billing;
-                    BillingsService.updateBilling(obj._id, { ...obj, isReminded: true });
+                await Promise.all(
+                    billings.map((b) =>
+                        BillingsService.updateBilling(b._id, { isReminded: true })
+                    )
+                );
+                const plainedBillings = billings.map((b) => {
+                    const obj = b.toObject ? b.toObject() : b;
+                    // BillingsService.updateBilling(b._id, { isReminded: true })
                     return {
                         ...obj,
-                        dueDate: dayjs(obj.dueDate).format('MMMM D, YYYY'),
-                    }
-                })
+                        dueDate: dayjs(obj.dueDate).format("MMMM D, YYYY"),
+                    };
+                });
 
                 await BillingsService.sendBillingReminder(plainedBillings, user);
             }
         }
-        console.log('Billing reminder job ran successfully');
     } catch (error) {
         console.error('Error in billing reminder job:', error);
     }
 };
 
-// Runs every day at 8 AM server time
-cron.schedule('0 8 * * *', () => {
-    console.log('Running daily at 8am for billing reminder...');
-    runBillingReminderJob();
+// Runs every 10mins server time
+cron.schedule('*/10 * * * *', () => {
+    console.log('Running per 10 minutes for billing reminder...');
+    frequencyBasedBillingReminder();
 });
