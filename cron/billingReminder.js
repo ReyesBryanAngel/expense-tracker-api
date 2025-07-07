@@ -22,13 +22,53 @@ const isReminderDue = (billing) => {
     }
 };
 
+const resetRecurringBillings = async (frequency) => {
+    try {
+        const billings = await Billings.find({ frequency, isPaid: true });
+
+        for (const billing of billings) {
+            const currentDue = dayjs(billing.dueDate);
+            let newDueDate;
+
+            switch (frequency) {
+                case "Daily":
+                    newDueDate = currentDue.add(1, 'day');
+                    break;
+                case "Weekly":
+                    newDueDate = currentDue.add(1, 'week');
+                    break;
+                case "Monthly":
+                    newDueDate = currentDue.add(1, 'month');
+                    break;
+                case "Yearly":
+                    newDueDate = currentDue.add(1, 'year');
+                    break;
+                default:
+                    continue;
+            }
+
+            await Billings.updateOne(
+                { _id: billing._id },
+                {
+                    $set: {
+                        isPaid: false,
+                        isReminded: false,
+                        dueDate: newDueDate.toDate()
+                    }
+                }
+            );
+        }
+
+        console.log(`[RESET] Updated ${billings.length} ${frequency} billings`);
+    } catch (error) {
+        console.error(`[RESET] Error resetting ${frequency} billings:`, error);
+    }
+};
+
+
 const frequencyBasedBillingReminder = async () => {
     try {
-        const allBillings = await Billings.find({
-            isReminded: false,
-            isPaid: false,
-        });
-
+        const allBillings = await Billings.find({ isReminded: false, isPaid: false });
         const upcomingBillings = allBillings.filter(isReminderDue);
         const userMap = new Map();
 
@@ -40,11 +80,10 @@ const frequencyBasedBillingReminder = async () => {
         for (const [userId, billings] of userMap.entries()) {
             const user = await UserAuthService.getUserById(userId);
             if (user) {
-                await Promise.all(
-                    billings.map((b) =>
-                        BillingsService.updateBilling(b._id, { isReminded: true })
-                    )
-                );
+                await Promise.all(billings.map((b) =>
+                    BillingsService.updateBilling(b._id, { isReminded: true })
+                ));
+
                 const plainedBillings = billings.map((b) => {
                     const obj = b.toObject ? b.toObject() : b;
                     // BillingsService.updateBilling(b._id, { isReminded: true })
@@ -62,8 +101,15 @@ const frequencyBasedBillingReminder = async () => {
     }
 };
 
-// Runs every 10mins server time
+// Reset isPaid and isReminded flags based on billing frequency
+cron.schedule('0 6 * * *', () => resetRecurringBillings('Daily')); // Every day at 6 AM
+// cron.schedule('57 15 * * *', () => resetRecurringBillings('Daily'));
+cron.schedule('0 6 * * 1', () => resetRecurringBillings('Weekly')); // Every Monday at 6 AM
+cron.schedule('0 6 1 * *', () => resetRecurringBillings('Monthly')); // 1st of every month at 6 AM
+cron.schedule('0 6 1 1 *', () => resetRecurringBillings('Yearly')); // Jan 1st at 6 AM
+
+// Run reminder job every 10 minutes
 cron.schedule('*/10 * * * *', () => {
-    console.log('Running per 10 minutes for billing reminder...');
+    console.log('Running billing reminder job...');
     frequencyBasedBillingReminder();
 });

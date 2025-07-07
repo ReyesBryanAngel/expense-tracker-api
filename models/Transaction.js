@@ -5,7 +5,7 @@ const TransactionSchema = new mongoose.Schema({
     category: {
         type: String,
         required: true,
-        enum: ["Housing", "Food", "Transportation", "Entertainment", "Utilities", "Others", "Income"]
+        enum: ["Housing", "Food", "Transportation", "Entertainment", "Utilities", "Others", "Income", "Bill"]
     },
     type: {
         type: String,
